@@ -1,0 +1,253 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo de usuários do sistema (instrutores, administradores)
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      UserRole @default(INSTRUCTOR)
+  avatar    String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  students      Student[]
+  workoutPlans  WorkoutPlan[]
+  appointments  Appointment[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+// Modelo de alunos
+model Student {
+  id              String            @id @default(cuid())
+  name            String
+  email           String            @unique
+  phone           String?
+  dateOfBirth     DateTime?
+  gender          Gender?
+  address         String?
+  emergencyContact String?
+  emergencyPhone  String?
+  medicalRestrictions String?
+  objectives      String?
+  status          StudentStatus     @default(ACTIVE)
+  registrationDate DateTime         @default(now())
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relacionamentos
+  instructorId    String
+  instructor      User              @relation(fields: [instructorId], references: [id])
+  payments        Payment[]
+  appointments    Appointment[]
+  progressRecords ProgressRecord[]
+  workoutPlans    WorkoutPlan[]
+  notifications   Notification[]
+
+  @@map("students")
+}
+
+// Modelo de pagamentos
+model Payment {
+  id          String        @id @default(cuid())
+  amount      Decimal       @db.Decimal(10, 2)
+  dueDate     DateTime
+  paidDate    DateTime?
+  status      PaymentStatus @default(PENDING)
+  description String?
+  method      PaymentMethod?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relacionamentos
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id])
+
+  @@map("payments")
+}
+
+// Modelo de agendamentos
+model Appointment {
+  id          String            @id @default(cuid())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  type        AppointmentType
+  status      AppointmentStatus @default(SCHEDULED)
+  notes       String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Relacionamentos
+  studentId    String
+  student      Student @relation(fields: [studentId], references: [id])
+  instructorId String
+  instructor   User    @relation(fields: [instructorId], references: [id])
+
+  @@map("appointments")
+}
+
+// Modelo de registros de evolução física
+model ProgressRecord {
+  id            String   @id @default(cuid())
+  weight        Decimal? @db.Decimal(5, 2)
+  bodyFat       Decimal? @db.Decimal(5, 2)
+  muscleMass    Decimal? @db.Decimal(5, 2)
+  chest         Decimal? @db.Decimal(5, 2)
+  waist         Decimal? @db.Decimal(5, 2)
+  hip           Decimal? @db.Decimal(5, 2)
+  thigh         Decimal? @db.Decimal(5, 2)
+  arm           Decimal? @db.Decimal(5, 2)
+  photos        String[] // URLs das fotos
+  notes         String?
+  recordDate    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relacionamentos
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id])
+
+  @@map("progress_records")
+}
+
+// Modelo de planos de treino
+model WorkoutPlan {
+  id          String           @id @default(cuid())
+  name        String
+  description String?
+  startDate   DateTime
+  endDate     DateTime?
+  status      WorkoutPlanStatus @default(ACTIVE)
+  notes       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  // Relacionamentos
+  studentId    String
+  student      Student    @relation(fields: [studentId], references: [id])
+  instructorId String
+  instructor   User       @relation(fields: [instructorId], references: [id])
+  exercises    Exercise[]
+
+  @@map("workout_plans")
+}
+
+// Modelo de exercícios
+model Exercise {
+  id           String @id @default(cuid())
+  name         String
+  sets         Int
+  reps         String // Pode ser "12-15" ou "até a falha"
+  weight       Decimal? @db.Decimal(5, 2)
+  restTime     Int? // Em segundos
+  instructions String?
+  order        Int // Ordem do exercício no treino
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relacionamentos
+  workoutPlanId String
+  workoutPlan   WorkoutPlan @relation(fields: [workoutPlanId], references: [id], onDelete: Cascade)
+
+  @@map("exercises")
+}
+
+// Modelo de notificações
+model Notification {
+  id        String           @id @default(cuid())
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  // Relacionamentos
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  studentId String?
+  student   Student? @relation(fields: [studentId], references: [id])
+
+  @@map("notifications")
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  INSTRUCTOR
+  MANAGER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  BANK_TRANSFER
+  PIX
+}
+
+enum AppointmentType {
+  PERSONAL_TRAINING
+  GROUP_CLASS
+  EVALUATION
+  CONSULTATION
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum WorkoutPlanStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum NotificationType {
+  PAYMENT_DUE
+  PAYMENT_OVERDUE
+  APPOINTMENT_REMINDER
+  BIRTHDAY
+  PLAN_EXPIRING
+  GENERAL
+}
