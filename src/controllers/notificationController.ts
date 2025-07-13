@@ -212,14 +212,40 @@ export class NotificationController {
 
   static async createPaymentOverdueNotifications(req: AuthRequest, res: Response, next: NextFunction) {
     try {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0) // Start of today
+      
       const overduePayments = await prisma.payment.findMany({
         where: {
-          status: "OVERDUE",
+          OR: [
+            { status: "OVERDUE" },
+            {
+              status: "PENDING",
+              dueDate: {
+                lt: today
+              }
+            }
+          ]
         },
         include: {
           student: true,
         },
       })
+
+      // First, update the status of pending payments that are overdue
+      const pendingOverduePayments = overduePayments.filter(p => p.status === "PENDING" && p.dueDate < today)
+      if (pendingOverduePayments.length > 0) {
+        await prisma.payment.updateMany({
+          where: {
+            id: {
+              in: pendingOverduePayments.map(p => p.id)
+            }
+          },
+          data: {
+            status: "OVERDUE"
+          }
+        })
+      }
 
       const notifications = await Promise.all(
         overduePayments.map((payment) =>
@@ -282,6 +308,49 @@ export class NotificationController {
 
       res.json({
         message: `${notifications.length} birthday notifications created`,
+        count: notifications.length,
+      })
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  static async createPaymentDueNotifications(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const today = new Date()
+      const threeDaysFromNow = new Date(today)
+      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3)
+      
+      const duePayments = await prisma.payment.findMany({
+        where: {
+          status: "PENDING",
+          dueDate: {
+            gte: today,
+            lte: threeDaysFromNow
+          }
+        },
+        include: {
+          student: true,
+        },
+      })
+
+      const notifications = await Promise.all(
+        duePayments.map((payment) =>
+          prisma.notification.create({
+            data: {
+              type: NotificationType.PAYMENT_DUE,
+              title: "Pagamento Próximo do Vencimento",
+              message: `O pagamento de ${payment.student.name} no valor de R$ ${payment.amount} vence em ${payment.dueDate.toLocaleDateString("pt-BR")}`,
+              userId: req.user!.id,
+              studentId: payment.studentId,
+              isRead: false,
+            },
+          }),
+        ),
+      )
+
+      res.json({
+        message: `${notifications.length} notifications created for due payments`,
         count: notifications.length,
       })
     } catch (error) {

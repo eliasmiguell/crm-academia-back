@@ -32,7 +32,7 @@ export const updateStudentSchema = createStudentSchema.partial()
 
 // Payment schemas
 export const createPaymentSchema = z.object({
-  studentId: z.string().uuid("ID do aluno inválido"),
+  studentId: z.string().min(1, "ID do aluno inválido"),
   amount: z.number().positive("O valor deve ser positivo"),
   dueDate: z.string(),
   description: z.string().optional(),
@@ -49,9 +49,9 @@ export const updatePaymentSchema = z.object({
 
 // Appointment schemas
 export const createAppointmentSchema = z.object({
-  studentId: z.string().uuid("ID do aluno inválido"),
-  instructorId: z.string().uuid("ID do instrutor inválido"),
-  title: z.string(),
+  studentId: z.string().min(1, "ID do aluno inválido"),
+  instructorId: z.string().min(1, "ID do instrutor inválido"),
+  title: z.string().min(1, "O título é obrigatório"),
   startTime: z.string(),
   endTime: z.string(),
   type: z.enum(["PERSONAL_TRAINING", "GROUP_CLASS", "EVALUATION", "CONSULTATION"]),
@@ -68,7 +68,7 @@ export const updateAppointmentSchema = z.object({
 
 // Progress schemas
 export const createProgressSchema = z.object({
-  studentId: z.string().uuid("ID do aluno inválido"),
+  studentId: z.string().min(1, "ID do aluno inválido"),
   weight: z.number().positive("O peso deve ser um número positivo").optional(),
   bodyFat: z.number().min(0, "A gordura corporal não pode ser negativa").max(100, "A gordura corporal deve ser no máximo 100%").optional(),
   muscleMass: z.number().positive("A massa muscular deve ser um número positivo").optional(),
@@ -80,8 +80,8 @@ export const createProgressSchema = z.object({
 export const createWorkoutPlanSchema = z.object({
   name: z.string().min(2, "O nome deve ter no mínimo 2 caracteres"),
   description: z.string().optional(),
-  studentId: z.string().uuid("ID do aluno inválido"),
-  instructorId: z.string().uuid("ID do instrutor inválido"),
+  studentId: z.string().min(1, "ID do aluno inválido"),
+  instructorId: z.string().min(1, "ID do instrutor inválido"),
   exercises: z.array(
     z.object({
       name: z.string().min(1, "O nome do exercício é obrigatório"),
@@ -96,9 +96,9 @@ export const createWorkoutPlanSchema = z.object({
 
 // Notification schemas
 export const createNotificationSchema = z.object({
-  userId: z.string().uuid("ID do usuário inválido"),
-  type: z.enum(["PAYMENT_DUE", "PAYMENT_OVERDUE", "APPOINTMENT_REMINDER", "BIRTHDAY"]),
+  userId: z.string().min(1, "ID do usuário inválido"),
+  type: z.enum(["PAYMENT_DUE", "PAYMENT_OVERDUE", "APPOINTMENT_REMINDER", "BIRTHDAY", "PLAN_EXPIRING", "GENERAL"]),
   title: z.string().min(1, "O título é obrigatório"),
   message: z.string().min(1, "A mensagem é obrigatória"),
-  studentId: z.string().uuid("ID do aluno inválido").optional(),
+  studentId: z.string().min(1, "ID do aluno inválido").optional(),
 })

@@ -1,8 +1,12 @@
 import express from "express"
 import { authenticateToken, requireRole } from "../middleware/auth"
 import { NotificationController } from "../controllers/notificationController"
+import notificationScheduler from "../services/notificationScheduler"
 
 const router = express.Router()
+
+// Get notification statistics (deve vir antes das rotas com parâmetros)
+router.get("/stats", authenticateToken, NotificationController.getStats)
 
 // Get all notifications with pagination and filters
 router.get("/", authenticateToken, NotificationController.getAll)
@@ -22,23 +26,44 @@ router.patch("/read-all", authenticateToken, NotificationController.markAllAsRea
 // Delete notification
 router.delete("/:id", authenticateToken, NotificationController.delete)
 
-// Get notification statistics
-router.get("/stats/overview", authenticateToken, NotificationController.getStats)
-
-// Create system notifications (automated)
+// Create payment overdue notifications
 router.post(
-  "/system/payment-overdue",
+  "/payment-overdue",
   authenticateToken,
-  requireRole(["ADMIN"]),
+  requireRole(["ADMIN", "MANAGER"]),
   NotificationController.createPaymentOverdueNotifications,
 )
 
 // Create birthday notifications
 router.post(
-  "/system/birthdays",
+  "/birthday",
   authenticateToken,
-  requireRole(["ADMIN"]),
+  requireRole(["ADMIN", "MANAGER"]),
   NotificationController.createBirthdayNotifications,
+)
+
+// Create payment due notifications
+router.post(
+  "/payment-due",
+  authenticateToken,
+  requireRole(["ADMIN", "MANAGER"]),
+  NotificationController.createPaymentDueNotifications,
+)
+
+// Execute manual check (for testing)
+router.post(
+  "/manual-check",
+  authenticateToken,
+  requireRole(["ADMIN", "MANAGER"]),
+  async (req, res) => {
+    try {
+      await notificationScheduler.runManualCheck()
+      res.json({ message: "Manual check executed successfully" })
+    } catch (error) {
+      console.error("Error executing manual check:", error)
+      res.status(500).json({ error: "Internal server error" })
+    }
+  }
 )
 
 export default router

@@ -50,7 +50,7 @@ export async function POST(request: Request, response: Response) {
       },
     })
   } catch (error) {
-    console.error("Erro no login:", error)
+    console.log("Erro no login:", error)
 
     if (error instanceof Error && error.name === "ZodError") {
       return response.status(400).json({ message: "Dados inválidos", errors: error })

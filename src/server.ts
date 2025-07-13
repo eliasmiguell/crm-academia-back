@@ -3,6 +3,7 @@ import cors from "cors"
 import helmet from "helmet"
 import rateLimit from "express-rate-limit"
 import { errorHandler } from "./middleware/errorHandler"
+import notificationScheduler from "./services/notificationScheduler"
 
 // Import routes
 import authRoutes from "./routes/auth"
@@ -70,6 +71,22 @@ app.use(errorHandler)
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`)
   console.log(`📊 Health check: http://localhost:${PORT}`)
+  
+  // Iniciar scheduler de notificações
+  notificationScheduler.start()
+})
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('🛑 SIGTERM received, shutting down gracefully...')
+  notificationScheduler.stop()
+  process.exit(0)
+})
+
+process.on('SIGINT', () => {
+  console.log('🛑 SIGINT received, shutting down gracefully...')
+  notificationScheduler.stop()
+  process.exit(0)
 })
 
 export default app

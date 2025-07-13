@@ -97,7 +97,7 @@ export class AuthController {
         return res.status(401).json({ error: "Access token required" })
       }
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string }
 
       const user = await prisma.user.findUnique({
         where: { id: decoded.userId },
