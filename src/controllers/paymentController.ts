@@ -220,9 +220,9 @@ export class PaymentController {
 
       const stats = {
         revenue: {
-          total: totalRevenue._sum.amount || 0,
-          pending: pendingAmount._sum.amount || 0,
-          overdue: overdueAmount._sum.amount || 0,
+          total: Number(totalRevenue._sum.amount || 0),
+          pending: Number(pendingAmount._sum.amount || 0),
+          overdue: Number(overdueAmount._sum.amount || 0),
         },
         payments: {
           total: totalPayments,

@@ -57,7 +57,7 @@ export class DashboardController {
           inactive: totalStudents - activeStudents,
         },
         revenue: {
-          total: totalRevenue._sum.amount || 0,
+          total: Number(totalRevenue._sum.amount || 0),
           pendingPayments,
         },
         appointments: {
@@ -116,7 +116,7 @@ export class DashboardController {
         ...recentPayments.map((payment) => ({
           type: "payment",
           id: payment.id,
-          description: `Pagamento de ${payment.student.name} - R$ ${payment.amount}`,
+          description: `Pagamento de ${payment.student.name} - R$ ${Number(payment.amount).toFixed(2)}`,
           status: payment.status,
           createdAt: payment.createdAt,
         })),

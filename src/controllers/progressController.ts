@@ -91,7 +91,10 @@ export class ProgressController {
       const validatedData = createProgressSchema.parse(req.body)
 
       const progressRecord = await prisma.progressRecord.create({
-        data: validatedData,
+        data: {
+          ...validatedData,
+          recordDate: new Date(),
+        },
         include: {
           student: {
             select: {

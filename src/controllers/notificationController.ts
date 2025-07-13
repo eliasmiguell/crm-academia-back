@@ -253,7 +253,7 @@ export class NotificationController {
             data: {
               type: NotificationType.PAYMENT_OVERDUE,
               title: "Pagamento em Atraso",
-              message: `O pagamento de ${payment.student.name} no valor de R$ ${payment.amount} está em atraso desde ${payment.dueDate.toLocaleDateString("pt-BR")}`,
+              message: `O pagamento de ${payment.student.name} no valor de R$ ${Number(payment.amount).toFixed(2)} está em atraso desde ${payment.dueDate.toLocaleDateString("pt-BR")}`,
               userId: req.user!.id,
               studentId: payment.studentId,
               isRead: false,
@@ -340,7 +340,7 @@ export class NotificationController {
             data: {
               type: NotificationType.PAYMENT_DUE,
               title: "Pagamento Próximo do Vencimento",
-              message: `O pagamento de ${payment.student.name} no valor de R$ ${payment.amount} vence em ${payment.dueDate.toLocaleDateString("pt-BR")}`,
+              message: `O pagamento de ${payment.student.name} no valor de R$ ${Number(payment.amount).toFixed(2)} vence em ${payment.dueDate.toLocaleDateString("pt-BR")}`,
               userId: req.user!.id,
               studentId: payment.studentId,
               isRead: false,

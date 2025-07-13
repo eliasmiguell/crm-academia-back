@@ -72,7 +72,12 @@ export const createProgressSchema = z.object({
   weight: z.number().positive("O peso deve ser um número positivo").optional(),
   bodyFat: z.number().min(0, "A gordura corporal não pode ser negativa").max(100, "A gordura corporal deve ser no máximo 100%").optional(),
   muscleMass: z.number().positive("A massa muscular deve ser um número positivo").optional(),
-  measurements: z.record(z.number()).optional(),
+  chest: z.number().positive("A medida do peitoral deve ser um número positivo").optional(),
+  waist: z.number().positive("A medida da cintura deve ser um número positivo").optional(),
+  hip: z.number().positive("A medida do quadril deve ser um número positivo").optional(),
+  thigh: z.number().positive("A medida da coxa deve ser um número positivo").optional(),
+  arm: z.number().positive("A medida do braço deve ser um número positivo").optional(),
+  photos: z.array(z.string()).max(10, "Máximo de 10 fotos permitidas").optional(),
   notes: z.string().optional(),
 })
 
