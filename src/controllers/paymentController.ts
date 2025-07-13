@@ -2,20 +2,30 @@ import type { Response, NextFunction } from "express"
 import { prisma } from "../lib/prisma"
 import type { AuthRequest } from "../middleware/auth"
 import { createPaymentSchema, updatePaymentSchema } from "../lib/schema"
+import { Prisma, PaymentStatus } from "@prisma/client"
+
+type PaymentWhereInput = {
+  status?: PaymentStatus
+  studentId?: string
+  dueDate?: {
+    gte?: Date
+    lte?: Date
+  }
+}
 
 export class PaymentController {
   static async getAll(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const page = Number.parseInt(req.query.page as string) || 1
       const limit = Number.parseInt(req.query.limit as string) || 10
-      const status = req.query.status as string
+      const status = req.query.status as PaymentStatus
       const studentId = req.query.studentId as string
       const startDate = req.query.startDate as string
       const endDate = req.query.endDate as string
 
       const skip = (page - 1) * limit
 
-      const where: any = {}
+      const where: PaymentWhereInput = {}
 
       if (status) {
         where.status = status
@@ -43,7 +53,6 @@ export class PaymentController {
                 id: true,
                 name: true,
                 email: true,
-                plan: true,
               },
             },
           },
@@ -76,7 +85,6 @@ export class PaymentController {
               name: true,
               email: true,
               phone: true,
-              plan: true,
             },
           },
         },
@@ -125,11 +133,14 @@ export class PaymentController {
     try {
       const validatedData = updatePaymentSchema.parse(req.body)
 
-      const updateData: any = { ...validatedData }
+      const updateData: Prisma.PaymentUpdateInput = { 
+        ...validatedData,
+        paidDate: validatedData.paidAt ? new Date(validatedData.paidAt) : undefined
+      }
 
-      // If marking as paid, set paidAt timestamp
+      // If marking as paid, set paidDate timestamp
       if (validatedData.status === "PAID" && !validatedData.paidAt) {
-        updateData.paidAt = new Date()
+        updateData.paidDate = new Date()
       }
 
       const payment = await prisma.payment.update({
@@ -172,7 +183,7 @@ export class PaymentController {
       const startDate = req.query.startDate as string
       const endDate = req.query.endDate as string
 
-      const where: any = {}
+      const where: PaymentWhereInput = {}
 
       if (startDate || endDate) {
         where.dueDate = {}

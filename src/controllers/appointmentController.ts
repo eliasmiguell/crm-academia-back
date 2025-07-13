@@ -2,14 +2,15 @@ import type { Response, NextFunction } from "express"
 import { prisma } from "../lib/prisma"
 import type { AuthRequest } from "../middleware/auth"
 import { createAppointmentSchema, updateAppointmentSchema } from "../lib/schema"
+import { Prisma, AppointmentStatus, AppointmentType } from "@prisma/client"
 
 export class AppointmentController {
   static async getAll(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const page = Number.parseInt(req.query.page as string) || 1
       const limit = Number.parseInt(req.query.limit as string) || 10
-      const status = req.query.status as string
-      const type = req.query.type as string
+      const status = req.query.status as AppointmentStatus
+      const type = req.query.type as AppointmentType
       const studentId = req.query.studentId as string
       const instructorId = req.query.instructorId as string
       const startDate = req.query.startDate as string
@@ -17,7 +18,7 @@ export class AppointmentController {
 
       const skip = (page - 1) * limit
 
-      const where: any = {}
+      const where: Prisma.AppointmentWhereInput = {}
 
       if (status) where.status = status
       if (type) where.type = type
@@ -25,9 +26,9 @@ export class AppointmentController {
       if (instructorId) where.instructorId = instructorId
 
       if (startDate || endDate) {
-        where.date = {}
-        if (startDate) where.date.gte = new Date(startDate)
-        if (endDate) where.date.lte = new Date(endDate)
+        where.startTime = {}
+        if (startDate) where.startTime.gte = new Date(startDate)
+        if (endDate) where.startTime.lte = new Date(endDate)
       }
 
       const [appointments, total] = await Promise.all([
@@ -35,7 +36,7 @@ export class AppointmentController {
           where,
           skip,
           take: limit,
-          orderBy: { date: "desc" },
+          orderBy: { startTime: "desc" },
           include: {
             student: {
               select: {
@@ -113,7 +114,7 @@ export class AppointmentController {
       const conflictingAppointment = await prisma.appointment.findFirst({
         where: {
           instructorId: validatedData.instructorId,
-          date: validatedData.date,
+          startTime: validatedData.startTime,
           status: "SCHEDULED",
         },
       })
@@ -221,15 +222,15 @@ export class AppointmentController {
       const appointments = await prisma.appointment.findMany({
         where: {
           instructorId,
-          date: {
+          startTime: {
             gte: startOfDay,
             lte: endOfDay,
           },
           status: "SCHEDULED",
         },
         select: {
-          date: true,
-          duration: true,
+          startTime: true,
+          endTime: true,
         },
       })
 
@@ -244,12 +245,12 @@ export class AppointmentController {
       const startDate = req.query.startDate as string
       const endDate = req.query.endDate as string
 
-      const where: any = {}
+      const where: Prisma.AppointmentWhereInput = {}
 
       if (startDate || endDate) {
-        where.date = {}
-        if (startDate) where.date.gte = new Date(startDate)
-        if (endDate) where.date.lte = new Date(endDate)
+        where.startTime = {}
+        if (startDate) where.startTime.gte = new Date(startDate)
+        if (endDate) where.startTime.lte = new Date(endDate)
       }
 
       const [

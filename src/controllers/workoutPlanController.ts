@@ -2,6 +2,7 @@ import type { Response, NextFunction } from "express"
 import { prisma } from "../lib/prisma"
 import type { AuthRequest } from "../middleware/auth"
 import { createWorkoutPlanSchema } from "../lib/schema"
+import { Prisma, WorkoutPlanStatus } from "@prisma/client"
 
 export class WorkoutPlanController {
   static async getAll(req: AuthRequest, res: Response, next: NextFunction) {
@@ -10,15 +11,15 @@ export class WorkoutPlanController {
       const limit = Number.parseInt(req.query.limit as string) || 10
       const studentId = req.query.studentId as string
       const instructorId = req.query.instructorId as string
-      const isActive = req.query.isActive === "true"
+      const status = req.query.status as WorkoutPlanStatus
 
       const skip = (page - 1) * limit
 
-      const where: any = {}
+      const where: Prisma.WorkoutPlanWhereInput = {}
 
       if (studentId) where.studentId = studentId
       if (instructorId) where.instructorId = instructorId
-      if (isActive !== undefined) where.isActive = isActive
+      if (status) where.status = status
 
       const [workoutPlans, total] = await Promise.all([
         prisma.workoutPlan.findMany({
@@ -108,10 +109,16 @@ export class WorkoutPlanController {
           description: validatedData.description,
           studentId: validatedData.studentId,
           instructorId: validatedData.instructorId,
-          isActive: true,
+          status: "ACTIVE",
+          startDate: new Date(),
           exercises: {
             create: validatedData.exercises.map((exercise, index) => ({
-              ...exercise,
+              name: exercise.name,
+              sets: exercise.sets,
+              reps: exercise.reps,
+              weight: exercise.weight || null,
+              restTime: exercise.restTime ? Number(exercise.restTime) : null,
+              instructions: exercise.notes || null,
               order: index + 1,
             })),
           },
@@ -148,11 +155,11 @@ export class WorkoutPlanController {
     try {
       const validatedData = createWorkoutPlanSchema.partial().parse(req.body)
 
-      const updateData: any = {
+      const updateData: Prisma.WorkoutPlanUpdateInput = {
         name: validatedData.name,
         description: validatedData.description,
-        studentId: validatedData.studentId,
-        instructorId: validatedData.instructorId,
+        student: validatedData.studentId ? { connect: { id: validatedData.studentId } } : undefined,
+        instructor: validatedData.instructorId ? { connect: { id: validatedData.instructorId } } : undefined,
       }
 
       if (validatedData.exercises) {
@@ -162,7 +169,12 @@ export class WorkoutPlanController {
 
         updateData.exercises = {
           create: validatedData.exercises.map((exercise, index) => ({
-            ...exercise,
+            name: exercise.name,
+            sets: exercise.sets,
+            reps: exercise.reps,
+            weight: exercise.weight || null,
+            restTime: exercise.restTime ? Number(exercise.restTime) : null,
+            instructions: exercise.notes || null,
             order: index + 1,
           })),
         }
@@ -205,16 +217,18 @@ export class WorkoutPlanController {
     try {
       const workoutPlan = await prisma.workoutPlan.findUnique({
         where: { id: req.params.id },
-        select: { isActive: true },
+        select: { status: true },
       })
 
       if (!workoutPlan) {
         return res.status(404).json({ error: "Workout plan not found" })
       }
 
+      const newStatus = workoutPlan.status === "ACTIVE" ? "PAUSED" : "ACTIVE"
+
       const updatedWorkoutPlan = await prisma.workoutPlan.update({
         where: { id: req.params.id },
-        data: { isActive: !workoutPlan.isActive },
+        data: { status: newStatus },
         include: {
           student: {
             select: {
@@ -234,7 +248,7 @@ export class WorkoutPlanController {
       })
 
       res.json({
-        message: `Workout plan ${updatedWorkoutPlan.isActive ? "activated" : "deactivated"} successfully`,
+        message: `Workout plan ${updatedWorkoutPlan.status === "ACTIVE" ? "activated" : "deactivated"} successfully`,
         workoutPlan: updatedWorkoutPlan,
       })
     } catch (error) {
@@ -279,7 +293,8 @@ export class WorkoutPlanController {
           description: originalPlan.description,
           studentId,
           instructorId: originalPlan.instructorId,
-          isActive: true,
+          status: "ACTIVE",
+          startDate: new Date(),
           exercises: {
             create: originalPlan.exercises.map((exercise) => ({
               name: exercise.name,
@@ -287,7 +302,7 @@ export class WorkoutPlanController {
               reps: exercise.reps,
               weight: exercise.weight,
               restTime: exercise.restTime,
-              notes: exercise.notes,
+              instructions: exercise.instructions,
               order: exercise.order,
             })),
           },

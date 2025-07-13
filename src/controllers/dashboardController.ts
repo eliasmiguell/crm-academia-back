@@ -24,7 +24,7 @@ export class DashboardController {
         prisma.payment.count({ where: { status: "PENDING" } }),
         prisma.appointment.count({
           where: {
-            date: {
+            startTime: {
               gte: new Date(new Date().setHours(0, 0, 0, 0)),
               lt: new Date(new Date().setHours(23, 59, 59, 999)),
             },
@@ -33,7 +33,7 @@ export class DashboardController {
         }),
         prisma.appointment.count({
           where: {
-            date: {
+            startTime: {
               gte: new Date(new Date().setDate(new Date().getDate() - new Date().getDay())),
               lt: new Date(new Date().setDate(new Date().getDate() - new Date().getDay() + 7)),
             },
@@ -154,23 +154,23 @@ export class DashboardController {
       const payments = await prisma.payment.findMany({
         where: {
           status: "PAID",
-          paidAt: {
+          paidDate: {
             gte: startDate,
             lte: endDate,
           },
         },
         select: {
           amount: true,
-          paidAt: true,
+          paidDate: true,
         },
       })
 
       const monthlyRevenue = payments.reduce(
         (acc, payment) => {
-          if (!payment.paidAt) return acc
+          if (!payment.paidDate) return acc
 
-          const monthKey = `${payment.paidAt.getFullYear()}-${String(payment.paidAt.getMonth() + 1).padStart(2, "0")}`
-          acc[monthKey] = (acc[monthKey] || 0) + payment.amount
+          const monthKey = `${payment.paidDate.getFullYear()}-${String(payment.paidDate.getMonth() + 1).padStart(2, "0")}`
+          acc[monthKey] = (acc[monthKey] || 0) + Number(payment.amount)
           return acc
         },
         {} as Record<string, number>,

@@ -2,24 +2,23 @@ import type { Response, NextFunction } from "express"
 import { prisma } from "../lib/prisma"
 import type { AuthRequest } from "../middleware/auth"
 import { createNotificationSchema } from "../lib/schema"
+import { Prisma, NotificationType } from "@prisma/client"
 
 export class NotificationController {
   static async getAll(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const page = Number.parseInt(req.query.page as string) || 1
       const limit = Number.parseInt(req.query.limit as string) || 10
-      const type = req.query.type as string
-      const priority = req.query.priority as string
+      const type = req.query.type as NotificationType
       const isRead = req.query.isRead === "true"
 
       const skip = (page - 1) * limit
 
-      const where: any = {
+      const where: Prisma.NotificationWhereInput = {
         userId: req.user!.id,
       }
 
       if (type) where.type = type
-      if (priority) where.priority = priority
       if (isRead !== undefined) where.isRead = isRead
 
       const [notifications, total] = await Promise.all([
@@ -89,10 +88,7 @@ export class NotificationController {
       const validatedData = createNotificationSchema.parse(req.body)
 
       const notification = await prisma.notification.create({
-        data: {
-          ...validatedData,
-          priority: validatedData.priority || "MEDIUM",
-        },
+        data: validatedData,
         include: {
           student: {
             select: {
@@ -122,7 +118,6 @@ export class NotificationController {
         },
         data: {
           isRead: true,
-          readAt: new Date(),
         },
       })
 
@@ -145,7 +140,6 @@ export class NotificationController {
         },
         data: {
           isRead: true,
-          readAt: new Date(),
         },
       })
 
@@ -179,7 +173,7 @@ export class NotificationController {
 
   static async getStats(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const [totalNotifications, unreadNotifications, highPriorityNotifications, notificationsByType] =
+      const [totalNotifications, unreadNotifications, urgentNotifications, notificationsByType] =
         await Promise.all([
           prisma.notification.count({
             where: { userId: req.user!.id },
@@ -188,7 +182,7 @@ export class NotificationController {
             where: { userId: req.user!.id, isRead: false },
           }),
           prisma.notification.count({
-            where: { userId: req.user!.id, priority: "HIGH", isRead: false },
+            where: { userId: req.user!.id, type: NotificationType.PAYMENT_OVERDUE, isRead: false },
           }),
           prisma.notification.groupBy({
             by: ["type"],
@@ -200,7 +194,7 @@ export class NotificationController {
       const stats = {
         total: totalNotifications,
         unread: unreadNotifications,
-        highPriority: highPriorityNotifications,
+        urgent: urgentNotifications,
         byType: notificationsByType.reduce(
           (acc, item) => {
             acc[item.type] = item._count
@@ -231,12 +225,12 @@ export class NotificationController {
         overduePayments.map((payment) =>
           prisma.notification.create({
             data: {
-              type: "PAYMENT",
+              type: NotificationType.PAYMENT_OVERDUE,
               title: "Pagamento em Atraso",
               message: `O pagamento de ${payment.student.name} no valor de R$ ${payment.amount} está em atraso desde ${payment.dueDate.toLocaleDateString("pt-BR")}`,
-              priority: "HIGH",
-              studentId: payment.studentId,
               userId: req.user!.id,
+              studentId: payment.studentId,
+              isRead: false,
             },
           }),
         ),
@@ -275,12 +269,12 @@ export class NotificationController {
         todayBirthdays.map((student) =>
           prisma.notification.create({
             data: {
-              type: "BIRTHDAY",
+              type: NotificationType.BIRTHDAY,
               title: "Aniversário",
               message: `Hoje é aniversário de ${student.name}! 🎉`,
-              priority: "LOW",
-              studentId: student.id,
               userId: req.user!.id,
+              studentId: student.id,
+              isRead: false,
             },
           }),
         ),

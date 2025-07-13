@@ -2,44 +2,45 @@ import { z } from "zod"
 
 // Auth schemas
 export const registerSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email format"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  name: z.string().min(2, "O nome deve ter no mínimo 2 caracteres"),
+  email: z.string().email("Formato de e-mail inválido"),
+  password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres"),
   role: z.enum(["ADMIN", "MANAGER", "INSTRUCTOR"]).optional(),
 })
 
 export const loginSchema = z.object({
-  email: z.string().email("Invalid email format"),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().email("Formato de e-mail inválido"),
+  password: z.string().min(1, "A senha é obrigatória"),
 })
 
 // Student schemas
 export const createStudentSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email format"),
-  phone: z.string().min(10, "Phone must be at least 10 characters"),
-  dateOfBirth: z.string().optional(),
-  address: z.string().optional(),
-  emergencyContact: z.string().optional(),
-  medicalRestrictions: z.string().optional(),
-  objectives: z.string().optional(),
-  plan: z.enum(["BASIC", "PREMIUM", "VIP"]),
-  status: z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"]).optional(),
+  name: z.string().min(2, "O nome deve ter no mínimo 2 caracteres"),
+  email: z.string().email("Formato de e-mail inválido"),
+  phone: z.string().optional().transform(val => val === "" ? undefined : val),
+  dateOfBirth: z.string().optional().transform(val => val === "" ? undefined : val),
+  gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional().or(z.literal("")).transform(val => val === "" ? undefined : val),
+  address: z.string().optional().transform(val => val === "" ? undefined : val),
+  emergencyContact: z.string().optional().transform(val => val === "" ? undefined : val),
+  emergencyPhone: z.string().optional().transform(val => val === "" ? undefined : val),
+  medicalRestrictions: z.string().optional().transform(val => val === "" ? undefined : val),
+  objectives: z.string().optional().transform(val => val === "" ? undefined : val),
+  status: z.enum(["ACTIVE", "INACTIVE", "SUSPENDED", "PENDING"]).optional(),
 })
 
 export const updateStudentSchema = createStudentSchema.partial()
 
 // Payment schemas
 export const createPaymentSchema = z.object({
-  studentId: z.string().uuid("Invalid student ID"),
-  amount: z.number().positive("Amount must be positive"),
+  studentId: z.string().uuid("ID do aluno inválido"),
+  amount: z.number().positive("O valor deve ser positivo"),
   dueDate: z.string(),
   description: z.string().optional(),
   type: z.enum(["MONTHLY", "ANNUAL", "REGISTRATION", "OTHER"]),
 })
 
 export const updatePaymentSchema = z.object({
-  amount: z.number().positive().optional(),
+  amount: z.number().positive("O valor deve ser positivo").optional(),
   dueDate: z.string().optional(),
   paidAt: z.string().optional(),
   status: z.enum(["PENDING", "PAID", "OVERDUE", "CANCELLED"]).optional(),
@@ -48,42 +49,43 @@ export const updatePaymentSchema = z.object({
 
 // Appointment schemas
 export const createAppointmentSchema = z.object({
-  studentId: z.string().uuid("Invalid student ID"),
-  instructorId: z.string().uuid("Invalid instructor ID"),
-  date: z.string(),
-  duration: z.number().positive("Duration must be positive"),
-  type: z.enum(["PERSONAL_TRAINING", "ASSESSMENT", "CONSULTATION"]),
+  studentId: z.string().uuid("ID do aluno inválido"),
+  instructorId: z.string().uuid("ID do instrutor inválido"),
+  title: z.string(),
+  startTime: z.string(),
+  endTime: z.string(),
+  type: z.enum(["PERSONAL_TRAINING", "GROUP_CLASS", "EVALUATION", "CONSULTATION"]),
   notes: z.string().optional(),
 })
 
 export const updateAppointmentSchema = z.object({
-  date: z.string().optional(),
-  duration: z.number().positive().optional(),
-  type: z.enum(["PERSONAL_TRAINING", "ASSESSMENT", "CONSULTATION"]).optional(),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
+  type: z.enum(["PERSONAL_TRAINING", "GROUP_CLASS", "EVALUATION", "CONSULTATION"]).optional(),
   status: z.enum(["SCHEDULED", "COMPLETED", "CANCELLED", "NO_SHOW"]).optional(),
   notes: z.string().optional(),
 })
 
 // Progress schemas
 export const createProgressSchema = z.object({
-  studentId: z.string().uuid("Invalid student ID"),
-  weight: z.number().positive().optional(),
-  bodyFat: z.number().min(0).max(100).optional(),
-  muscleMass: z.number().positive().optional(),
+  studentId: z.string().uuid("ID do aluno inválido"),
+  weight: z.number().positive("O peso deve ser um número positivo").optional(),
+  bodyFat: z.number().min(0, "A gordura corporal não pode ser negativa").max(100, "A gordura corporal deve ser no máximo 100%").optional(),
+  muscleMass: z.number().positive("A massa muscular deve ser um número positivo").optional(),
   measurements: z.record(z.number()).optional(),
   notes: z.string().optional(),
 })
 
 // Workout Plan schemas
 export const createWorkoutPlanSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
+  name: z.string().min(2, "O nome deve ter no mínimo 2 caracteres"),
   description: z.string().optional(),
-  studentId: z.string().uuid("Invalid student ID"),
-  instructorId: z.string().uuid("Invalid instructor ID"),
+  studentId: z.string().uuid("ID do aluno inválido"),
+  instructorId: z.string().uuid("ID do instrutor inválido"),
   exercises: z.array(
     z.object({
-      name: z.string().min(1, "Exercise name is required"),
-      sets: z.number().positive("Sets must be positive"),
+      name: z.string().min(1, "O nome do exercício é obrigatório"),
+      sets: z.number().positive("O número de séries deve ser positivo"),
       reps: z.string(),
       weight: z.string().optional(),
       restTime: z.string().optional(),
@@ -94,10 +96,9 @@ export const createWorkoutPlanSchema = z.object({
 
 // Notification schemas
 export const createNotificationSchema = z.object({
-  userId: z.string().uuid("Invalid user ID"),
-  type: z.enum(["PAYMENT", "APPOINTMENT", "BIRTHDAY", "SYSTEM"]),
-  title: z.string().min(1, "Title is required"),
-  message: z.string().min(1, "Message is required"),
-  priority: z.enum(["LOW", "MEDIUM", "HIGH"]).optional(),
-  studentId: z.string().uuid().optional(),
+  userId: z.string().uuid("ID do usuário inválido"),
+  type: z.enum(["PAYMENT_DUE", "PAYMENT_OVERDUE", "APPOINTMENT_REMINDER", "BIRTHDAY"]),
+  title: z.string().min(1, "O título é obrigatório"),
+  message: z.string().min(1, "A mensagem é obrigatória"),
+  studentId: z.string().uuid("ID do aluno inválido").optional(),
 })

@@ -3,17 +3,18 @@ import bcrypt from "bcryptjs"
 import { prisma } from "../lib/prisma"
 import type { AuthRequest } from "../middleware/auth"
 import { registerSchema } from "../lib/schema"
+import { Prisma, UserRole } from "@prisma/client"
 
 export class UserController {
   static async getAll(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const page = Number.parseInt(req.query.page as string) || 1
       const limit = Number.parseInt(req.query.limit as string) || 10
-      const role = req.query.role as string
+      const role = req.query.role as UserRole
 
       const skip = (page - 1) * limit
 
-      const where: any = {}
+      const where: Prisma.UserWhereInput = {}
 
       if (role) {
         where.role = role
@@ -79,7 +80,7 @@ export class UserController {
     try {
       const { name, email, currentPassword, newPassword } = req.body
 
-      const updateData: any = {}
+      const updateData: Prisma.UserUpdateInput = {}
 
       if (name) updateData.name = name
       if (email) updateData.email = email
@@ -169,7 +170,7 @@ export class UserController {
     try {
       const { name, email, role, password } = req.body
 
-      const updateData: any = {}
+      const updateData: Prisma.UserUpdateInput = {}
 
       if (name) updateData.name = name
       if (email) updateData.email = email

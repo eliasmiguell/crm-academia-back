@@ -2,6 +2,7 @@ import type { Response, NextFunction } from "express"
 import { prisma } from "../lib/prisma"
 import type { AuthRequest } from "../middleware/auth"
 import { createProgressSchema } from "../lib/schema"
+import { Prisma } from "@prisma/client"
 
 export class ProgressController {
   static async getAll(req: AuthRequest, res: Response, next: NextFunction) {
@@ -14,7 +15,7 @@ export class ProgressController {
 
       const skip = (page - 1) * limit
 
-      const where: any = {}
+      const where: Prisma.ProgressRecordWhereInput = {}
 
       if (studentId) {
         where.studentId = studentId
@@ -162,7 +163,6 @@ export class ProgressController {
           weight: true,
           bodyFat: true,
           muscleMass: true,
-          measurements: true,
           createdAt: true,
         },
       })
@@ -170,13 +170,19 @@ export class ProgressController {
       // Calculate progress trends
       const trends = {
         weight: ProgressController.calculateTrend(
-          progressRecords.map((r) => ({ date: r.createdAt, value: r.weight })).filter((r) => r.value),
+          progressRecords
+            .filter((r) => r.weight !== null)
+            .map((r) => ({ date: r.createdAt, value: Number(r.weight) })),
         ),
         bodyFat: ProgressController.calculateTrend(
-          progressRecords.map((r) => ({ date: r.createdAt, value: r.bodyFat })).filter((r) => r.value),
+          progressRecords
+            .filter((r) => r.bodyFat !== null)
+            .map((r) => ({ date: r.createdAt, value: Number(r.bodyFat) })),
         ),
         muscleMass: ProgressController.calculateTrend(
-          progressRecords.map((r) => ({ date: r.createdAt, value: r.muscleMass })).filter((r) => r.value),
+          progressRecords
+            .filter((r) => r.muscleMass !== null)
+            .map((r) => ({ date: r.createdAt, value: Number(r.muscleMass) })),
         ),
       }
 

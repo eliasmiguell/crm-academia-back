@@ -2,6 +2,7 @@ import type { Response, NextFunction } from "express"
 import { prisma } from "../lib/prisma"
 import type { AuthRequest } from "../middleware/auth"
 import { createStudentSchema, updateStudentSchema } from "../lib/schema"
+import type { Prisma } from "@prisma/client"
 
 export class StudentController {
   static async getAll(req: AuthRequest, res: Response, next: NextFunction) {
@@ -10,11 +11,10 @@ export class StudentController {
       const limit = Number.parseInt(req.query.limit as string) || 10
       const search = req.query.search as string
       const status = req.query.status as string
-      const plan = req.query.plan as string
 
       const skip = (page - 1) * limit
 
-      const where: any = {}
+      const where: Prisma.StudentWhereInput = {}
 
       if (search) {
         where.OR = [
@@ -24,11 +24,7 @@ export class StudentController {
       }
 
       if (status) {
-        where.status = status
-      }
-
-      if (plan) {
-        where.plan = plan
+        where.status = status as "ACTIVE" | "INACTIVE" | "SUSPENDED" | "PENDING"
       }
 
       const [students, total] = await Promise.all([
@@ -44,7 +40,7 @@ export class StudentController {
             },
             appointments: {
               where: {
-                date: { gte: new Date() },
+                startTime: { gte: new Date() },
                 status: "SCHEDULED",
               },
               take: 1,
@@ -78,7 +74,7 @@ export class StudentController {
             take: 10,
           },
           appointments: {
-            orderBy: { date: "desc" },
+            orderBy: { startTime: "desc" },
             take: 10,
             include: {
               instructor: {
@@ -91,7 +87,7 @@ export class StudentController {
             take: 5,
           },
           workoutPlans: {
-            where: { isActive: true },
+            where: { status: "ACTIVE" },
             include: {
               exercises: true,
               instructor: {
@@ -106,7 +102,7 @@ export class StudentController {
         return res.status(404).json({ error: "Student not found" })
       }
 
-      res.json(student)
+      res.json({ student })
     } catch (error) {
       next(error)
     }
@@ -119,7 +115,9 @@ export class StudentController {
       const student = await prisma.student.create({
         data: {
           ...validatedData,
+          dateOfBirth: validatedData.dateOfBirth ? new Date(validatedData.dateOfBirth) : null,
           status: validatedData.status || "ACTIVE",
+          instructorId: req.user!.id,
         },
       })
 
@@ -138,7 +136,10 @@ export class StudentController {
 
       const student = await prisma.student.update({
         where: { id: req.params.id },
-        data: validatedData,
+        data: {
+          ...validatedData,
+          dateOfBirth: validatedData.dateOfBirth ? new Date(validatedData.dateOfBirth) : undefined,
+        },
       })
 
       res.json({
