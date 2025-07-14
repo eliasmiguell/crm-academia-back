@@ -107,6 +107,7 @@ export class PaymentController {
       const payment = await prisma.payment.create({
         data: {
           ...validatedData,
+          dueDate: new Date(validatedData.dueDate),
           status: "PENDING",
         },
         include: {
@@ -133,13 +134,26 @@ export class PaymentController {
     try {
       const validatedData = updatePaymentSchema.parse(req.body)
 
+      // Destructure to separate paidAt from other fields
+      const { paidAt, ...otherFields } = validatedData
+
+      // Remove paidAt from otherFields if it exists and create updateData
       const updateData: Prisma.PaymentUpdateInput = { 
-        ...validatedData,
-        paidDate: validatedData.paidAt ? new Date(validatedData.paidAt) : undefined
+        ...otherFields,
+        dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : undefined,
       }
 
-      // If marking as paid, set paidDate timestamp
-      if (validatedData.status === "PAID" && !validatedData.paidAt) {
+      // Remove paidAt from updateData if it exists (safety check)
+      if ('paidAt' in updateData) {
+        delete updateData.paidAt
+      }
+
+      // Handle paidDate logic
+      if (paidAt) {
+        // If paidAt is provided, use it
+        updateData.paidDate = new Date(paidAt)
+      } else if (validatedData.status === "PAID") {
+        // If marking as paid but no paidAt provided, set current timestamp
         updateData.paidDate = new Date()
       }
 

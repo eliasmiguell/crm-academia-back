@@ -25,4 +25,7 @@ router.delete("/:id", authenticateToken, requireRole(["ADMIN"]), UserController.
 // Get instructors list
 router.get("/instructors", authenticateToken, UserController.getInstructors)
 
+// Get user statistics
+router.get("/:id/stats", authenticateToken, UserController.getStats)
+
 export default router

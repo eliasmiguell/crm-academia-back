@@ -45,6 +45,7 @@ export const updatePaymentSchema = z.object({
   paidAt: z.string().optional(),
   status: z.enum(["PENDING", "PAID", "OVERDUE", "CANCELLED"]).optional(),
   description: z.string().optional(),
+  method: z.enum(["CASH", "CREDIT_CARD", "DEBIT_CARD", "BANK_TRANSFER", "PIX"]).optional(),
 })
 
 // Appointment schemas

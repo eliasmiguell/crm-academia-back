@@ -15,6 +15,7 @@ router.post("/", authenticateToken, PaymentController.create)
 
 // Update payment
 router.put("/:id", authenticateToken, requireRole(["ADMIN", "MANAGER"]), PaymentController.update)
+router.patch("/:id", authenticateToken, requireRole(["ADMIN", "MANAGER"]), PaymentController.update)
 
 // Delete payment
 router.delete("/:id", authenticateToken, requireRole(["ADMIN"]), PaymentController.delete)

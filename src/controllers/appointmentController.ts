@@ -129,6 +129,8 @@ export class AppointmentController {
       const appointment = await prisma.appointment.create({
         data: {
           ...validatedData,
+          startTime: new Date(validatedData.startTime),
+          endTime: new Date(validatedData.endTime),
           status: "SCHEDULED",
         },
         include: {
@@ -162,9 +164,15 @@ export class AppointmentController {
     try {
       const validatedData = updateAppointmentSchema.parse(req.body)
 
+      const updateData = {
+        ...validatedData,
+        startTime: validatedData.startTime ? new Date(validatedData.startTime) : undefined,
+        endTime: validatedData.endTime ? new Date(validatedData.endTime) : undefined,
+      }
+
       const appointment = await prisma.appointment.update({
         where: { id: req.params.id },
-        data: validatedData,
+        data: updateData,
         include: {
           student: {
             select: {

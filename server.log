@@ -1,0 +1,6 @@
+
+> gym-crm-backend@1.0.0 dev
+> tsx watch src/server.ts
+
+🚀 Server running on port 8000
+📊 Health check: http://localhost:8000

@@ -236,4 +236,93 @@ export class UserController {
       next(error)
     }
   }
+
+  static async getStats(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params
+
+      // Verify if user exists and is an instructor
+      const user = await prisma.user.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+        },
+      })
+
+      if (!user) {
+        return res.status(404).json({ message: "Usuário não encontrado" })
+      }
+
+      // Get instructor statistics
+      const [studentsCount, appointmentsCount, workoutPlansCount, studentsWithActivePayments] = await Promise.all([
+        // Total students assigned to this instructor
+        prisma.student.count({
+          where: { instructorId: id },
+        }),
+        // Total appointments for this instructor
+        prisma.appointment.count({
+          where: { instructorId: id },
+        }),
+        // Total workout plans created by this instructor
+        prisma.workoutPlan.count({
+          where: { instructorId: id },
+        }),
+        // Students with active payments (paid this month)
+        prisma.student.count({
+          where: {
+            instructorId: id,
+            payments: {
+              some: {
+                status: "PAID",
+                paidDate: {
+                  gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                },
+              },
+            },
+          },
+        }),
+      ])
+
+      // Get recent appointments
+      const recentAppointments = await prisma.appointment.findMany({
+        where: { instructorId: id },
+        orderBy: { startTime: "desc" },
+        take: 5,
+        include: {
+          student: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      })
+
+      // Get students with overdue payments
+      const overduePayments = await prisma.payment.count({
+        where: {
+          status: "OVERDUE",
+          student: {
+            instructorId: id,
+          },
+        },
+      })
+
+      const stats = {
+        studentsCount,
+        appointmentsCount,
+        workoutPlansCount,
+        studentsWithActivePayments,
+        overduePayments,
+        recentAppointments,
+      }
+
+      res.json(stats)
+    } catch (error) {
+      next(error)
+    }
+  }
 }
