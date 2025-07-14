@@ -16,4 +16,7 @@ router.get("/revenue-chart", authenticateToken, DashboardController.getRevenueCh
 // Get student growth chart data
 router.get("/student-growth", authenticateToken, DashboardController.getStudentGrowth)
 
+// Get upcoming payments
+router.get("/upcoming-payments", authenticateToken, DashboardController.getUpcomingPayments)
+
 export default router

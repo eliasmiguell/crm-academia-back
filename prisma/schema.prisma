@@ -70,6 +70,7 @@ model Payment {
   status      PaymentStatus @default(PENDING)
   description String?
   method      PaymentMethod?
+  type        PaymentType   @default(MONTHLY)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -250,4 +251,11 @@ enum NotificationType {
   BIRTHDAY
   PLAN_EXPIRING
   GENERAL
+}
+
+enum PaymentType {
+  MONTHLY
+  ANNUAL
+  REGISTRATION
+  OTHER
 }

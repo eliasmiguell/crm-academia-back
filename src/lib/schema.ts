@@ -91,10 +91,10 @@ export const createWorkoutPlanSchema = z.object({
     z.object({
       name: z.string().min(1, "O nome do exercício é obrigatório"),
       sets: z.number().positive("O número de séries deve ser positivo"),
-      reps: z.string(),
-      weight: z.string().optional(),
-      restTime: z.string().optional(),
-      notes: z.string().optional(),
+      reps: z.string().min(1, "As repetições são obrigatórias"),
+      weight: z.string().optional().or(z.literal("")).transform(val => val === "" ? undefined : val),
+      restTime: z.string().optional().or(z.literal("")).transform(val => val === "" ? undefined : val),
+      notes: z.string().optional().or(z.literal("")).transform(val => val === "" ? undefined : val),
     }),
   ),
 })

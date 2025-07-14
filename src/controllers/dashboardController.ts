@@ -194,6 +194,62 @@ export class DashboardController {
     }
   }
 
+  static async getUpcomingPayments(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const limit = Number.parseInt(req.query.limit as string) || 10
+      const today = new Date()
+      const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
+
+      const upcomingPayments = await prisma.payment.findMany({
+        where: {
+          status: "PENDING",
+          dueDate: {
+            gte: today,
+            lte: nextWeek,
+          },
+        },
+        take: limit,
+        orderBy: { dueDate: "asc" },
+        include: {
+          student: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      })
+
+      const formattedPayments = upcomingPayments.map((payment) => {
+        const dueDate = new Date(payment.dueDate)
+        const diffTime = dueDate.getTime() - today.getTime()
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+        
+        let dueDateText = ""
+        if (diffDays === 0) {
+          dueDateText = "Hoje"
+        } else if (diffDays === 1) {
+          dueDateText = "Amanhã"
+        } else {
+          dueDateText = `Em ${diffDays} dias`
+        }
+
+        return {
+          id: payment.id,
+          student: payment.student.name,
+          amount: Number(payment.amount),
+          dueDate: payment.dueDate,
+          dueDateText,
+          diffDays,
+        }
+      })
+
+      res.json(formattedPayments)
+    } catch (error) {
+      next(error)
+    }
+  }
+
   static async getStudentGrowth(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const months = Number.parseInt(req.query.months as string) || 12

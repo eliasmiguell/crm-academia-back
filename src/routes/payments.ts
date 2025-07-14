@@ -11,7 +11,7 @@ router.get("/", authenticateToken, PaymentController.getAll)
 router.get("/:id", authenticateToken, PaymentController.getById)
 
 // Create payment
-router.post("/", authenticateToken, requireRole(["ADMIN", "MANAGER"]), PaymentController.create)
+router.post("/", authenticateToken, PaymentController.create)
 
 // Update payment
 router.put("/:id", authenticateToken, requireRole(["ADMIN", "MANAGER"]), PaymentController.update)
