@@ -34,6 +34,7 @@ export class AuthController {
           email: true,
           role: true,
           createdAt: true,
+          avatar: true,
         },
       })
 
@@ -80,6 +81,7 @@ export class AuthController {
           name: user.name,
           email: user.email,
           role: user.role,
+          avatar: user.avatar,
         },
         token,
       })
@@ -106,6 +108,7 @@ export class AuthController {
           name: true,
           email: true,
           role: true,
+          avatar: true,
         },
       })
 

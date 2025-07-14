@@ -15,12 +15,32 @@ import progressRoutes from "./routes/progress"
 import workoutPlanRoutes from "./routes/workoutPlans"
 import notificationRoutes from "./routes/notifications"
 import dashboardRoutes from "./routes/dashboard"
-
+import uploadRouter from "./routes/upload"
+import path from "path";
+import fs from "fs"
 const app = express()
 const PORT = process.env.PORT || 8000
 
+const uploadPath = path.resolve(__dirname, "../uploads")
+
+// Criar diretórios se não existirem
+if (!fs.existsSync(uploadPath)) {
+  fs.mkdirSync(uploadPath, { recursive: true })
+}
+
 // Security middleware
-app.use(helmet())
+app.use(helmet({
+  crossOriginResourcePolicy: { 
+    policy: "cross-origin" // Permite servir arquivos para diferentes origens
+  },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"], // Permite imagens de várias fontes
+      mediaSrc: ["'self'", "data:", "https:", "blob:"], // Permite mídia
+    }
+  }
+}))
 const allowedOrigins = [
   'https://v0-academy-and-trainer-crm.vercel.app',
   'http://localhost:3000'
@@ -39,12 +59,12 @@ app.use(cors({
 
 
 // Rate limiting
-const limiter = rateLimit({
+const uploadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: "Too many requests from this IP, please try again later.",
+  max: 20, // limit each IP to 20 uploads per windowMs
+  message: "Too many upload requests from this IP, please try again later.",
 })
-app.use(limiter)
+app.use(uploadLimiter)
 
 // Body parsing middleware
 app.use(express.json({ limit: "10mb" }))
@@ -56,9 +76,17 @@ app.get("/health", (req, res) => {
     status: "OK",
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
+    uploadPath: uploadPath,
+    uploadPathExists: fs.existsSync(uploadPath)
   })
 })
 
+
+
+
+if (fs.existsSync(uploadPath)) {
+  app.use("/uploads", express.static(uploadPath))
+}
 // API routes
 app.use("/api/auth", authRoutes)
 app.use("/api/users", userRoutes)
@@ -69,6 +97,13 @@ app.use("/api/progress", progressRoutes)
 app.use("/api/workout-plans", workoutPlanRoutes)
 app.use("/api/notifications", notificationRoutes)
 app.use("/api/dashboard", dashboardRoutes)
+app.use("/api/upload", uploadLimiter, uploadRouter);
+
+
+app.use("/uploads/*", (req, res, next) => {
+  console.log(`📁 Arquivo solicitado: ${req.originalUrl}`)
+  next()
+})
 
 // 404 handler
 app.use("*", (req, res) => {

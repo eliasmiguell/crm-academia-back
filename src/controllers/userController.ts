@@ -31,6 +31,7 @@ export class UserController {
             name: true,
             email: true,
             role: true,
+            avatar:true,
             createdAt: true,
             updatedAt: true,
           },
@@ -60,6 +61,7 @@ export class UserController {
           id: true,
           name: true,
           email: true,
+          avatar:true,
           role: true,
           createdAt: true,
           updatedAt: true,
@@ -77,6 +79,7 @@ export class UserController {
   }
 
   static async updateProfile(req: AuthRequest, res: Response, next: NextFunction) {
+    console.log("updateProfile backend", req.body)
     try {
       const { name, email, currentPassword, newPassword } = req.body
 
@@ -168,13 +171,14 @@ export class UserController {
 
   static async update(req: AuthRequest, res: Response, next: NextFunction) {
     try {
-      const { name, email, role, password } = req.body
+      const { name, email, role, password, avatar } = req.body
 
       const updateData: Prisma.UserUpdateInput = {}
 
       if (name) updateData.name = name
       if (email) updateData.email = email
       if (role) updateData.role = role
+      if (avatar) updateData.avatar = avatar
       if (password) updateData.password = await bcrypt.hash(password, 12)
 
       const user = await prisma.user.update({
@@ -226,6 +230,7 @@ export class UserController {
           id: true,
           name: true,
           email: true,
+          avatar:true,
           role: true,
         },
         orderBy: { name: "asc" },
