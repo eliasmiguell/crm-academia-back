@@ -21,12 +21,22 @@ const PORT = process.env.PORT || 8000
 
 // Security middleware
 app.use(helmet())
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    credentials: true,
-  }),
-)
+const allowedOrigins = [
+  'https://v0-academy-and-trainer-crm.vercel.app',
+  'http://localhost:3000'
+]
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ''))) {
+      callback(null, true)
+    } else {
+      callback(new Error('Not allowed by CORS'))
+    }
+  },
+  credentials: true,
+}))
+
 
 // Rate limiting
 const limiter = rateLimit({
