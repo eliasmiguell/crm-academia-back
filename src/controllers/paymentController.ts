@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma"
 import type { AuthRequest } from "../middleware/auth"
 import { createPaymentSchema, updatePaymentSchema } from "../lib/schema"
 import { Prisma, PaymentStatus } from "@prisma/client"
+import { sendMail } from "../services/emailService";
 
 type PaymentWhereInput = {
   status?: PaymentStatus
@@ -120,6 +121,15 @@ export class PaymentController {
           },
         },
       })
+
+      // Enviar e-mail de cobrança ao aluno
+      // if (payment.student?.email) {
+      //   await sendMail({
+      //     to: payment.student.email,
+      //     subject: `Cobrança de pagamento - ${payment.student.name}`,
+      //     text: `Olá ${payment.student.name},\n\nVocê possui um pagamento no valor de R$ ${Number(payment.amount).toFixed(2)} com vencimento em ${new Date(payment.dueDate).toLocaleDateString('pt-BR')}.\n\nPor favor, realize o pagamento até a data de vencimento.\n\nObrigado!`,
+      //   });
+      // }
 
       res.status(201).json({
         message: "Payment created successfully",
@@ -272,6 +282,31 @@ export class PaymentController {
       })
     } catch (error) {
       next(error)
+    }
+  }
+
+  static async sendChargeEmail(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const payment = await prisma.payment.findUnique({
+        where: { id },
+        include: {
+          student: {
+            select: { name: true, email: true },
+          },
+        },
+      });
+      if (!payment || !payment.student?.email) {
+        return res.status(404).json({ error: "Pagamento ou aluno não encontrado" });
+      }
+      await sendMail({
+        to: payment.student.email,
+        subject: `Cobrança de pagamento - ${payment.student.name}`,
+        html: `<h2>Olá ${payment.student.name},</h2><p>Você possui um pagamento no valor de <strong>R$ ${Number(payment.amount).toFixed(2)}</strong> com vencimento em <strong>${new Date(payment.dueDate).toLocaleDateString('pt-BR')}</strong>.</p><p>Por favor, realize o pagamento até a data de vencimento.</p><p>Obrigado!</p>`,
+      });
+      res.json({ message: "E-mail de cobrança enviado com sucesso!" });
+    } catch (error) {
+      next(error);
     }
   }
 }

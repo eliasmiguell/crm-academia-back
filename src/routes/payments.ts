@@ -17,6 +17,9 @@ router.post("/", authenticateToken, PaymentController.create)
 router.put("/:id", authenticateToken, requireRole(["ADMIN", "MANAGER"]), PaymentController.update)
 router.patch("/:id", authenticateToken, requireRole(["ADMIN", "MANAGER"]), PaymentController.update)
 
+// Enviar e-mail de cobrança manualmente
+router.patch("/:id/send-charge-email", authenticateToken, requireRole(["ADMIN", "MANAGER"]), PaymentController.sendChargeEmail)
+
 // Delete payment
 router.delete("/:id", authenticateToken, requireRole(["ADMIN"]), PaymentController.delete)
 
