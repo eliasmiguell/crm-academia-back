@@ -79,7 +79,7 @@ export class UserController {
   }
 
   static async updateProfile(req: AuthRequest, res: Response, next: NextFunction) {
-    console.log("updateProfile backend", req.body)
+  
     try {
       const { name, email, currentPassword, newPassword } = req.body
 

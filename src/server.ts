@@ -1,7 +1,6 @@
 import express from "express"
 import cors from "cors"
 import helmet from "helmet"
-import rateLimit from "express-rate-limit"
 import { errorHandler } from "./middleware/errorHandler"
 // import notificationScheduler from "./services/notificationScheduler"
 
@@ -59,12 +58,7 @@ app.use(cors({
 
 
 // Rate limiting
-const uploadLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // limit each IP to 20 uploads per windowMs
-  message: "Too many upload requests from this IP, please try again later.",
-})
-app.use(uploadLimiter)
+
 
 // Body parsing middleware
 app.use(express.json({ limit: "10mb" }))
@@ -97,7 +91,7 @@ app.use("/api/progress", progressRoutes)
 app.use("/api/workout-plans", workoutPlanRoutes)
 app.use("/api/notifications", notificationRoutes)
 app.use("/api/dashboard", dashboardRoutes)
-app.use("/api/upload", uploadLimiter, uploadRouter);
+app.use("/api/upload",  uploadRouter);
 
 
 app.use("/uploads/*", (req, res, next) => {
