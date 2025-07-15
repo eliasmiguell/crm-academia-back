@@ -157,7 +157,7 @@ export class StudentController {
         where: { id: req.params.id },
       })
 
-      res.json({ message: "Student deleted successfully" })
+      res.json({ message: "Estudante exlcuido com sucesso" })
     } catch (error) {
       next(error)
     }

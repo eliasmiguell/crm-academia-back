@@ -140,7 +140,7 @@ export class UserController {
       })
 
       if (existingUser) {
-        return res.status(409).json({ error: "User already exists" })
+        return res.status(409).json({ error: "Usuário com este email já existe" })
       }
 
       const hashedPassword = await bcrypt.hash(validatedData.password, 12)
@@ -156,15 +156,19 @@ export class UserController {
           name: true,
           email: true,
           role: true,
+          avatar: true,
           createdAt: true,
         },
       })
 
       res.status(201).json({
-        message: "User created successfully",
+        message: "Usuário criado com sucesso",
         user,
       })
     } catch (error) {
+      if (error instanceof Error) {
+        return res.status(400).json({ error: error.message })
+      }
       next(error)
     }
   }
@@ -189,15 +193,19 @@ export class UserController {
           name: true,
           email: true,
           role: true,
+          avatar: true,
           updatedAt: true,
         },
       })
 
       res.json({
-        message: "User updated successfully",
+        message: "Usuário atualizado com sucesso",
         user,
       })
     } catch (error) {
+      if (error instanceof Error) {
+        return res.status(400).json({ error: error.message })
+      }
       next(error)
     }
   }

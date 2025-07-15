@@ -1,3 +1,4 @@
+import "dotenv/config"
 import express from "express"
 import cors from "cors"
 import helmet from "helmet"
@@ -42,7 +43,7 @@ app.use(helmet({
 }))
 const allowedOrigins = [
   'https://v0-academy-and-trainer-crm.vercel.app',
-  'http://localhost:3000'
+  'http://localhost:3000',
 ]
 
 app.use(cors({

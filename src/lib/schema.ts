@@ -2,10 +2,11 @@ import { z } from "zod"
 
 // Auth schemas
 export const registerSchema = z.object({
-  name: z.string().min(2, "O nome deve ter no mínimo 2 caracteres"),
-  email: z.string().email("Formato de e-mail inválido"),
-  password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres"),
-  role: z.enum(["ADMIN", "MANAGER", "INSTRUCTOR"]).optional(),
+  name: z.string().min(2, "O nome deve ter no mínimo 2 caracteres").max(100, "O nome deve ter no máximo 100 caracteres"),
+  email: z.string().email("Formato de e-mail inválido").max(100, "O email deve ter no máximo 100 caracteres"),
+  password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres").max(100, "A senha deve ter no máximo 100 caracteres"),
+  role: z.enum(["ADMIN", "MANAGER", "INSTRUCTOR"]).optional().default("INSTRUCTOR"),
+  avatar: z.string().optional(),
 })
 
 export const loginSchema = z.object({
