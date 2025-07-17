@@ -1,6 +1,6 @@
 import { Router } from "express"
 import { AppointmentController } from "../controllers/appointmentController"
-import { authenticateToken, requireRole } from "../middleware/auth"
+import { authenticateToken } from "../middleware/auth"
 
 const router = Router()
 
@@ -16,8 +16,8 @@ router.post("/", authenticateToken, AppointmentController.create)
 // Update appointment
 router.put("/:id", authenticateToken, AppointmentController.update)
 
-// Delete appointment
-router.delete("/:id", authenticateToken, requireRole(["ADMIN", "MANAGER"]), AppointmentController.delete)
+// Delete appointment - Permitir que instrutores deletem seus agendamentos
+router.delete("/:id", authenticateToken, AppointmentController.delete)
 
 // Get instructor availability
 router.get("/availability/:instructorId", authenticateToken, AppointmentController.getAvailability)

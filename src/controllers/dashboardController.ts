@@ -40,7 +40,11 @@ export class DashboardController {
             status: "SCHEDULED",
           },
         }),
-        prisma.notification.count({ where: { isRead: false } }),
+        prisma.notification.count({ 
+          where: req.user!.role === "ADMIN" 
+            ? { isRead: false } 
+            : { userId: req.user!.id, isRead: false } 
+        }),
         prisma.progressRecord.count({
           where: {
             createdAt: {

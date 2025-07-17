@@ -16,6 +16,11 @@ export class StudentController {
 
       const where: Prisma.StudentWhereInput = {}
 
+      // Se não for ADMIN, filtrar apenas alunos do instrutor
+      if (req.user!.role !== "ADMIN") {
+        where.instructorId = req.user!.id
+      }
+
       if (search) {
         where.OR = [
           { name: { contains: search, mode: "insensitive" } },
@@ -34,6 +39,13 @@ export class StudentController {
           take: limit,
           orderBy: { createdAt: "desc" },
           include: {
+            instructor: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
             payments: {
               where: { status: "PENDING" },
               take: 1,
@@ -69,6 +81,13 @@ export class StudentController {
       const student = await prisma.student.findUnique({
         where: { id: req.params.id },
         include: {
+          instructor: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
           payments: {
             orderBy: { createdAt: "desc" },
             take: 10,
@@ -100,6 +119,11 @@ export class StudentController {
 
       if (!student) {
         return res.status(404).json({ error: "Student not found" })
+      }
+
+      // Se não for ADMIN, verificar se o aluno pertence ao instrutor
+      if (req.user!.role !== "ADMIN" && student.instructorId !== req.user!.id) {
+        return res.status(403).json({ error: "Insufficient permissions to view this student" })
       }
 
       res.json({ student })
@@ -134,6 +158,21 @@ export class StudentController {
     try {
       const validatedData = updateStudentSchema.parse(req.body)
 
+      // Verificar se o aluno existe e se o usuário tem permissão para editá-lo
+      const existingStudent = await prisma.student.findUnique({
+        where: { id: req.params.id },
+        select: { instructorId: true }
+      })
+
+      if (!existingStudent) {
+        return res.status(404).json({ error: "Student not found" })
+      }
+
+      // Se não for ADMIN, verificar se o aluno pertence ao instrutor
+      if (req.user!.role !== "ADMIN" && existingStudent.instructorId !== req.user!.id) {
+        return res.status(403).json({ error: "Insufficient permissions to edit this student" })
+      }
+
       const student = await prisma.student.update({
         where: { id: req.params.id },
         data: {
@@ -153,11 +192,26 @@ export class StudentController {
 
   static async delete(req: AuthRequest, res: Response, next: NextFunction) {
     try {
+      // Verificar se o aluno existe e se o usuário tem permissão para deletá-lo
+      const existingStudent = await prisma.student.findUnique({
+        where: { id: req.params.id },
+        select: { instructorId: true }
+      })
+
+      if (!existingStudent) {
+        return res.status(404).json({ error: "Student not found" })
+      }
+
+      // Apenas ADMIN pode deletar alunos
+      if (req.user!.role !== "ADMIN") {
+        return res.status(403).json({ error: "Insufficient permissions to delete students" })
+      }
+
       await prisma.student.delete({
         where: { id: req.params.id },
       })
 
-      res.json({ message: "Estudante exlcuido com sucesso" })
+      res.json({ message: "Estudante excluído com sucesso" })
     } catch (error) {
       next(error)
     }

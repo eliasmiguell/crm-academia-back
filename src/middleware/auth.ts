@@ -4,8 +4,6 @@ import { prisma } from "../lib/prisma"
 
 interface JWTPayload {
   userId: string
-  email: string
-  role: string
   iat: number
   exp: number
 }
@@ -20,7 +18,15 @@ export interface AuthRequest extends Request {
 
 export const authenticateToken = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
+    
+    // Verificar se JWT_SECRET está configurado
+    if (!process.env.JWT_SECRET) {
+      
+      return res.status(500).json({ error: "Server configuration error" })
+    }
+    
     const authHeader = req.headers["authorization"]
+    
     const token = authHeader && authHeader.split(" ")[1]
 
     if (!token) {
@@ -45,6 +51,7 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
     req.user = user
     next()
   } catch (error) {
+    console.error("❌ Erro na autenticação:", error)
     return res.status(403).json({ error: "Invalid or expired token" })
   }
 }

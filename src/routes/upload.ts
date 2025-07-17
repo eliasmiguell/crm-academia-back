@@ -6,8 +6,8 @@ import multer from "multer";
 
 const uploadRouter = express.Router();
 
-// Middleware para servir arquivos estáticos
-const uploadPath = path.resolve(__dirname, "../../../upload");
+// Middleware para servir arquivos estáticos - usando caminho absoluto
+const uploadPath = path.resolve(process.cwd(), "uploads");
 uploadRouter.use('/files', express.static(uploadPath));
 
 // Rotas de upload

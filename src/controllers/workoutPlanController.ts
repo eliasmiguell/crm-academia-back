@@ -17,6 +17,11 @@ export class WorkoutPlanController {
 
       const where: Prisma.WorkoutPlanWhereInput = {}
 
+      // Se não for ADMIN, filtrar apenas planos do instrutor
+      if (req.user!.role !== "ADMIN") {
+        where.instructorId = req.user!.id
+      }
+
       if (studentId) where.studentId = studentId
       if (instructorId) where.instructorId = instructorId
       if (status) where.status = status
@@ -93,6 +98,11 @@ export class WorkoutPlanController {
         return res.status(404).json({ error: "Workout plan not found" })
       }
 
+      // Se não for ADMIN, verificar se o plano pertence ao instrutor
+      if (req.user!.role !== "ADMIN" && workoutPlan.instructorId !== req.user!.id) {
+        return res.status(403).json({ error: "Insufficient permissions to view this workout plan" })
+      }
+
       res.json(workoutPlan)
     } catch (error) {
       next(error)
@@ -102,6 +112,11 @@ export class WorkoutPlanController {
   static async create(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const validatedData = createWorkoutPlanSchema.parse(req.body)
+
+      // Se não for ADMIN, verificar se o plano é para o instrutor logado
+      if (req.user!.role !== "ADMIN" && validatedData.instructorId !== req.user!.id) {
+        return res.status(403).json({ error: "Insufficient permissions to create workout plan for another instructor" })
+      }
 
       const workoutPlan = await prisma.workoutPlan.create({
         data: {
@@ -154,6 +169,21 @@ export class WorkoutPlanController {
   static async update(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const validatedData = createWorkoutPlanSchema.partial().parse(req.body)
+
+      // Verificar se o plano existe e se o usuário tem permissão para editá-lo
+      const existingPlan = await prisma.workoutPlan.findUnique({
+        where: { id: req.params.id },
+        select: { instructorId: true }
+      })
+
+      if (!existingPlan) {
+        return res.status(404).json({ error: "Workout plan not found" })
+      }
+
+      // Se não for ADMIN, verificar se o plano pertence ao instrutor
+      if (req.user!.role !== "ADMIN" && existingPlan.instructorId !== req.user!.id) {
+        return res.status(403).json({ error: "Insufficient permissions to edit this workout plan" })
+      }
 
       const updateData: Prisma.WorkoutPlanUpdateInput = {
         name: validatedData.name,

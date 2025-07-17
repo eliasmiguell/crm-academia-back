@@ -14,8 +14,11 @@ export class NotificationController {
 
       const skip = (page - 1) * limit
 
-      const where: Prisma.NotificationWhereInput = {
-        userId: req.user!.id,
+      const where: Prisma.NotificationWhereInput = {}
+
+      // Admin vê todas as notificações, outros usuários veem apenas as suas
+      if (req.user!.role !== "ADMIN") {
+        where.userId = req.user!.id
       }
 
       if (type) where.type = type
@@ -56,11 +59,17 @@ export class NotificationController {
 
   static async getById(req: AuthRequest, res: Response, next: NextFunction) {
     try {
+      const where: Prisma.NotificationWhereInput = {
+        id: req.params.id,
+      }
+
+      // Admin pode ver qualquer notificação, outros usuários apenas as suas
+      if (req.user!.role !== "ADMIN") {
+        where.userId = req.user!.id
+      }
+
       const notification = await prisma.notification.findFirst({
-        where: {
-          id: req.params.id,
-          userId: req.user!.id,
-        },
+        where,
         include: {
           student: {
             select: {
@@ -111,11 +120,17 @@ export class NotificationController {
 
   static async markAsRead(req: AuthRequest, res: Response, next: NextFunction) {
     try {
+      const where: Prisma.NotificationWhereInput = {
+        id: req.params.id,
+      }
+
+      // Admin pode marcar qualquer notificação como lida, outros usuários apenas as suas
+      if (req.user!.role !== "ADMIN") {
+        where.userId = req.user!.id
+      }
+
       const notification = await prisma.notification.updateMany({
-        where: {
-          id: req.params.id,
-          userId: req.user!.id,
-        },
+        where,
         data: {
           isRead: true,
         },
@@ -133,11 +148,17 @@ export class NotificationController {
 
   static async markAllAsRead(req: AuthRequest, res: Response, next: NextFunction) {
     try {
+      const where: Prisma.NotificationWhereInput = {
+        isRead: false,
+      }
+
+      // Admin pode marcar todas as notificações como lidas, outros usuários apenas as suas
+      if (req.user!.role !== "ADMIN") {
+        where.userId = req.user!.id
+      }
+
       const result = await prisma.notification.updateMany({
-        where: {
-          userId: req.user!.id,
-          isRead: false,
-        },
+        where,
         data: {
           isRead: true,
         },
@@ -154,11 +175,17 @@ export class NotificationController {
 
   static async delete(req: AuthRequest, res: Response, next: NextFunction) {
     try {
+      const where: Prisma.NotificationWhereInput = {
+        id: req.params.id,
+      }
+
+      // Admin pode deletar qualquer notificação, outros usuários apenas as suas
+      if (req.user!.role !== "ADMIN") {
+        where.userId = req.user!.id
+      }
+
       const result = await prisma.notification.deleteMany({
-        where: {
-          id: req.params.id,
-          userId: req.user!.id,
-        },
+        where,
       })
 
       if (result.count === 0) {
@@ -173,20 +200,28 @@ export class NotificationController {
 
   static async getStats(req: AuthRequest, res: Response, next: NextFunction) {
     try {
+      const where: Prisma.NotificationWhereInput = {}
+      const whereUnread: Prisma.NotificationWhereInput = { isRead: false }
+      const whereUrgent: Prisma.NotificationWhereInput = { 
+        type: NotificationType.PAYMENT_OVERDUE, 
+        isRead: false 
+      }
+
+      // Admin vê estatísticas de todas as notificações, outros usuários apenas das suas
+      if (req.user!.role !== "ADMIN") {
+        where.userId = req.user!.id
+        whereUnread.userId = req.user!.id
+        whereUrgent.userId = req.user!.id
+      }
+
       const [totalNotifications, unreadNotifications, urgentNotifications, notificationsByType] =
         await Promise.all([
-          prisma.notification.count({
-            where: { userId: req.user!.id },
-          }),
-          prisma.notification.count({
-            where: { userId: req.user!.id, isRead: false },
-          }),
-          prisma.notification.count({
-            where: { userId: req.user!.id, type: NotificationType.PAYMENT_OVERDUE, isRead: false },
-          }),
+          prisma.notification.count({ where }),
+          prisma.notification.count({ where: whereUnread }),
+          prisma.notification.count({ where: whereUrgent }),
           prisma.notification.groupBy({
             by: ["type"],
-            where: { userId: req.user!.id },
+            where,
             _count: true,
           }),
         ])
@@ -215,18 +250,28 @@ export class NotificationController {
       const today = new Date()
       today.setHours(0, 0, 0, 0) // Start of today
       
-      const overduePayments = await prisma.payment.findMany({
-        where: {
-          OR: [
-            { status: "OVERDUE" },
-            {
-              status: "PENDING",
-              dueDate: {
-                lt: today
-              }
+      // Construir filtro baseado no papel do usuário
+      const paymentWhere: Prisma.PaymentWhereInput = {
+        OR: [
+          { status: "OVERDUE" },
+          {
+            status: "PENDING",
+            dueDate: {
+              lt: today
             }
-          ]
-        },
+          }
+        ]
+      }
+
+      // Se não for admin, filtrar apenas pagamentos dos alunos do instrutor
+      if (req.user!.role !== "ADMIN") {
+        paymentWhere.student = {
+          instructorId: req.user!.id
+        }
+      }
+      
+      const overduePayments = await prisma.payment.findMany({
+        where: paymentWhere,
         include: {
           student: true,
         },
@@ -277,12 +322,20 @@ export class NotificationController {
       const todayMonth = today.getMonth() + 1
       const todayDay = today.getDate()
 
-      const birthdayStudents = await prisma.student.findMany({
-        where: {
-          dateOfBirth: {
-            not: null,
-          },
+      // Construir filtro baseado no papel do usuário
+      const studentWhere: Prisma.StudentWhereInput = {
+        dateOfBirth: {
+          not: null,
         },
+      }
+
+      // Se não for admin, filtrar apenas alunos do instrutor
+      if (req.user!.role !== "ADMIN") {
+        studentWhere.instructorId = req.user!.id
+      }
+
+      const birthdayStudents = await prisma.student.findMany({
+        where: studentWhere,
       })
 
       const todayBirthdays = birthdayStudents.filter((student) => {
@@ -321,14 +374,24 @@ export class NotificationController {
       const threeDaysFromNow = new Date(today)
       threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3)
       
+      // Construir filtro baseado no papel do usuário
+      const paymentWhere: Prisma.PaymentWhereInput = {
+        status: "PENDING",
+        dueDate: {
+          gte: today,
+          lte: threeDaysFromNow
+        }
+      }
+
+      // Se não for admin, filtrar apenas pagamentos dos alunos do instrutor
+      if (req.user!.role !== "ADMIN") {
+        paymentWhere.student = {
+          instructorId: req.user!.id
+        }
+      }
+      
       const duePayments = await prisma.payment.findMany({
-        where: {
-          status: "PENDING",
-          dueDate: {
-            gte: today,
-            lte: threeDaysFromNow
-          }
-        },
+        where: paymentWhere,
         include: {
           student: true,
         },

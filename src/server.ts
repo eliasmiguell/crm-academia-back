@@ -3,6 +3,7 @@ import express from "express"
 import cors from "cors"
 import helmet from "helmet"
 import { errorHandler } from "./middleware/errorHandler"
+import { authenticateToken, AuthRequest } from "./middleware/auth"
 // import notificationScheduler from "./services/notificationScheduler"
 
 // Import routes
@@ -21,7 +22,7 @@ import fs from "fs"
 const app = express()
 const PORT = process.env.PORT || 8000
 
-const uploadPath = path.resolve(__dirname, "../uploads")
+const uploadPath = path.resolve(process.cwd(), "uploads")
 
 // Criar diretórios se não existirem
 if (!fs.existsSync(uploadPath)) {
@@ -76,7 +77,22 @@ app.get("/health", (req, res) => {
   })
 })
 
+// Test endpoint para verificar autenticação
+app.get("/api/test-auth", (req, res) => {
+  res.json({
+    message: "Endpoint público funcionando",
+    timestamp: new Date().toISOString()
+  })
+})
 
+// Test endpoint protegido
+app.get("/api/test-auth-protected", authenticateToken, (req: AuthRequest, res) => {
+  res.json({
+    message: "Endpoint protegido funcionando",
+    user: req.user,
+    timestamp: new Date().toISOString()
+  })
+})
 
 
 if (fs.existsSync(uploadPath)) {
@@ -111,6 +127,7 @@ app.use(errorHandler)
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`)
   console.log(`📊 Health check: http://localhost:${PORT}`)
+  console.log(`🔑 JWT_SECRET configurado: ${process.env.JWT_SECRET ? "Sim" : "Não"}`)
   
   // Iniciar scheduler de notificações
   // notificationScheduler.start()

@@ -7,6 +7,11 @@ import { Prisma, AppointmentStatus, AppointmentType } from "@prisma/client"
 export class AppointmentController {
   static async getAll(req: AuthRequest, res: Response, next: NextFunction) {
     try {
+      console.log("🔍 AppointmentController.getAll - Iniciando")
+      console.log("👤 User:", req.user)
+      console.log("🔑 User role:", req.user?.role)
+      console.log("🆔 User ID:", req.user?.id)
+
       const page = Number.parseInt(req.query.page as string) || 1
       const limit = Number.parseInt(req.query.limit as string) || 10
       const status = req.query.status as AppointmentStatus
@@ -20,6 +25,14 @@ export class AppointmentController {
 
       const where: Prisma.AppointmentWhereInput = {}
 
+      // Se não for ADMIN, filtrar apenas agendamentos do instrutor
+      if (req.user!.role !== "ADMIN") {
+        console.log("📋 Filtrando agendamentos para instrutor:", req.user!.id)
+        where.instructorId = req.user!.id
+      } else {
+        console.log("👑 ADMIN - vendo todos os agendamentos")
+      }
+
       if (status) where.status = status
       if (type) where.type = type
       if (studentId) where.studentId = studentId
@@ -30,6 +43,8 @@ export class AppointmentController {
         if (startDate) where.startTime.gte = new Date(startDate)
         if (endDate) where.startTime.lte = new Date(endDate)
       }
+
+      console.log("🔍 Query where:", JSON.stringify(where, null, 2))
 
       const [appointments, total] = await Promise.all([
         prisma.appointment.findMany({
@@ -58,6 +73,8 @@ export class AppointmentController {
         prisma.appointment.count({ where }),
       ])
 
+      console.log("✅ Encontrados", appointments.length, "agendamentos de", total, "total")
+
       res.json({
         appointments,
         pagination: {
@@ -68,6 +85,7 @@ export class AppointmentController {
         },
       })
     } catch (error) {
+      console.error("❌ Erro em AppointmentController.getAll:", error)
       next(error)
     }
   }
@@ -100,6 +118,11 @@ export class AppointmentController {
         return res.status(404).json({ error: "Appointment not found" })
       }
 
+      // Se não for ADMIN, verificar se o agendamento pertence ao instrutor
+      if (req.user!.role !== "ADMIN" && appointment.instructorId !== req.user!.id) {
+        return res.status(403).json({ error: "Insufficient permissions to view this appointment" })
+      }
+
       res.json(appointment)
     } catch (error) {
       next(error)
@@ -109,6 +132,11 @@ export class AppointmentController {
   static async create(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const validatedData = createAppointmentSchema.parse(req.body)
+
+      // Se não for ADMIN, verificar se o agendamento é para o instrutor logado
+      if (req.user!.role !== "ADMIN" && validatedData.instructorId !== req.user!.id) {
+        return res.status(403).json({ error: "Insufficient permissions to create appointment for another instructor" })
+      }
 
       // Check for conflicts
       const conflictingAppointment = await prisma.appointment.findFirst({
@@ -164,6 +192,21 @@ export class AppointmentController {
     try {
       const validatedData = updateAppointmentSchema.parse(req.body)
 
+      // Verificar se o agendamento existe e se o usuário tem permissão para editá-lo
+      const existingAppointment = await prisma.appointment.findUnique({
+        where: { id: req.params.id },
+        select: { instructorId: true }
+      })
+
+      if (!existingAppointment) {
+        return res.status(404).json({ error: "Appointment not found" })
+      }
+
+      // Se não for ADMIN, verificar se o agendamento pertence ao instrutor
+      if (req.user!.role !== "ADMIN" && existingAppointment.instructorId !== req.user!.id) {
+        return res.status(403).json({ error: "Insufficient permissions to edit this appointment" })
+      }
+
       const updateData = {
         ...validatedData,
         startTime: validatedData.startTime ? new Date(validatedData.startTime) : undefined,
@@ -202,6 +245,21 @@ export class AppointmentController {
 
   static async delete(req: AuthRequest, res: Response, next: NextFunction) {
     try {
+      // Verificar se o agendamento existe e se o usuário tem permissão para deletá-lo
+      const existingAppointment = await prisma.appointment.findUnique({
+        where: { id: req.params.id },
+        select: { instructorId: true }
+      })
+
+      if (!existingAppointment) {
+        return res.status(404).json({ error: "Appointment not found" })
+      }
+
+      // Se não for ADMIN, verificar se o agendamento pertence ao instrutor
+      if (req.user!.role !== "ADMIN" && existingAppointment.instructorId !== req.user!.id) {
+        return res.status(403).json({ error: "Insufficient permissions to delete this appointment" })
+      }
+
       await prisma.appointment.delete({
         where: { id: req.params.id },
       })

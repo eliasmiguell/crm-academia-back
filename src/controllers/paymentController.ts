@@ -5,15 +5,6 @@ import { createPaymentSchema, updatePaymentSchema } from "../lib/schema"
 import { Prisma, PaymentStatus } from "@prisma/client"
 import { sendMail } from "../services/emailService";
 
-type PaymentWhereInput = {
-  status?: PaymentStatus
-  studentId?: string
-  dueDate?: {
-    gte?: Date
-    lte?: Date
-  }
-}
-
 export class PaymentController {
   static async getAll(req: AuthRequest, res: Response, next: NextFunction) {
     try {
@@ -26,7 +17,18 @@ export class PaymentController {
 
       const skip = (page - 1) * limit
 
-      const where: PaymentWhereInput = {}
+      const where: Prisma.PaymentWhereInput = {}
+
+      // Se não for ADMIN, filtrar apenas pagamentos dos alunos do instrutor
+      if (req.user!.role !== "ADMIN") {
+        // Buscar IDs dos alunos do instrutor
+        const instructorStudents = await prisma.student.findMany({
+          where: { instructorId: req.user!.id },
+          select: { id: true }
+        })
+        const studentIds = instructorStudents.map(s => s.id)
+        where.studentId = { in: studentIds }
+      }
 
       if (status) {
         where.status = status
@@ -54,6 +56,12 @@ export class PaymentController {
                 id: true,
                 name: true,
                 email: true,
+                instructor: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
               },
             },
           },
@@ -86,6 +94,7 @@ export class PaymentController {
               name: true,
               email: true,
               phone: true,
+              instructorId: true,
             },
           },
         },
@@ -93,6 +102,11 @@ export class PaymentController {
 
       if (!payment) {
         return res.status(404).json({ error: "Payment not found" })
+      }
+
+      // Se não for ADMIN, verificar se o pagamento pertence a um aluno do instrutor
+      if (req.user!.role !== "ADMIN" && payment.student.instructorId !== req.user!.id) {
+        return res.status(403).json({ error: "Insufficient permissions to view this payment" })
       }
 
       res.json(payment)
@@ -104,6 +118,18 @@ export class PaymentController {
   static async create(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const validatedData = createPaymentSchema.parse(req.body)
+
+      // Se não for ADMIN, verificar se o aluno pertence ao instrutor
+      if (req.user!.role !== "ADMIN") {
+        const student = await prisma.student.findUnique({
+          where: { id: validatedData.studentId },
+          select: { instructorId: true }
+        })
+
+        if (!student || student.instructorId !== req.user!.id) {
+          return res.status(403).json({ error: "Insufficient permissions to create payment for this student" })
+        }
+      }
 
       const payment = await prisma.payment.create({
         data: {
@@ -143,6 +169,25 @@ export class PaymentController {
   static async update(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const validatedData = updatePaymentSchema.parse(req.body)
+
+      // Verificar se o pagamento existe e se o usuário tem permissão para editá-lo
+      const existingPayment = await prisma.payment.findUnique({
+        where: { id: req.params.id },
+        include: {
+          student: {
+            select: { instructorId: true }
+          }
+        }
+      })
+
+      if (!existingPayment) {
+        return res.status(404).json({ error: "Payment not found" })
+      }
+
+      // Se não for ADMIN, verificar se o pagamento pertence a um aluno do instrutor
+      if (req.user!.role !== "ADMIN" && existingPayment.student.instructorId !== req.user!.id) {
+        return res.status(403).json({ error: "Insufficient permissions to edit this payment" })
+      }
 
       // Destructure to separate paidAt from other fields
       const { paidAt, ...otherFields } = validatedData
@@ -192,6 +237,25 @@ export class PaymentController {
 
   static async delete(req: AuthRequest, res: Response, next: NextFunction) {
     try {
+      // Verificar se o pagamento existe e se o usuário tem permissão para deletá-lo
+      const existingPayment = await prisma.payment.findUnique({
+        where: { id: req.params.id },
+        include: {
+          student: {
+            select: { instructorId: true }
+          }
+        }
+      })
+
+      if (!existingPayment) {
+        return res.status(404).json({ error: "Payment not found" })
+      }
+
+      // Se não for ADMIN, verificar se o pagamento pertence a um aluno do instrutor
+      if (req.user!.role !== "ADMIN" && existingPayment.student.instructorId !== req.user!.id) {
+        return res.status(403).json({ error: "Insufficient permissions to delete this payment" })
+      }
+
       await prisma.payment.delete({
         where: { id: req.params.id },
       })
@@ -207,7 +271,7 @@ export class PaymentController {
       const startDate = req.query.startDate as string
       const endDate = req.query.endDate as string
 
-      const where: PaymentWhereInput = {}
+      const where: Prisma.PaymentWhereInput = {}
 
       if (startDate || endDate) {
         where.dueDate = {}

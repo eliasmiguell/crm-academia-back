@@ -5,8 +5,8 @@ import path from "path";
 import fs from "fs";
 import { v4 as uuidv4 } from 'uuid';
 
-// Diretório base de uploads
-const uploadPath = path.resolve(__dirname, "../../uploads");
+// Diretório base de uploads - usando caminho absoluto
+const uploadPath = path.resolve(process.cwd(), "uploads");
 
 // Tipos permitidos
 const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
@@ -44,10 +44,8 @@ const storage = multer.diskStorage({
 
 // Filtro de arquivos
 const fileFilter = (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
-  console.log("Verificando arquivo:", file.originalname, "tipo:", file.mimetype)
   const allowedTypes = [...allowedImageTypes, ...allowedDocumentTypes];
   if (allowedTypes.includes(file.mimetype)) {
-    console.log("Arquivo aceito:", file.originalname)
     cb(null, true);
   } else {
     console.log("Arquivo rejeitado:", file.originalname, "tipo:", file.mimetype)

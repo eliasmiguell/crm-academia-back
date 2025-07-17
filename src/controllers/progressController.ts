@@ -17,6 +17,17 @@ export class ProgressController {
 
       const where: Prisma.ProgressRecordWhereInput = {}
 
+      // Se não for ADMIN, filtrar apenas progresso dos alunos do instrutor
+      if (req.user!.role !== "ADMIN") {
+        // Buscar IDs dos alunos do instrutor
+        const instructorStudents = await prisma.student.findMany({
+          where: { instructorId: req.user!.id },
+          select: { id: true }
+        })
+        const studentIds = instructorStudents.map(s => s.id)
+        where.studentId = { in: studentIds }
+      }
+
       if (studentId) {
         where.studentId = studentId
       }
@@ -39,6 +50,12 @@ export class ProgressController {
                 id: true,
                 name: true,
                 email: true,
+                instructor: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
               },
             },
           },
@@ -71,6 +88,7 @@ export class ProgressController {
               name: true,
               email: true,
               dateOfBirth: true,
+              instructorId: true,
             },
           },
         },
@@ -78,6 +96,11 @@ export class ProgressController {
 
       if (!progressRecord) {
         return res.status(404).json({ error: "Progress record not found" })
+      }
+
+      // Se não for ADMIN, verificar se o progresso pertence a um aluno do instrutor
+      if (req.user!.role !== "ADMIN" && progressRecord.student.instructorId !== req.user!.id) {
+        return res.status(403).json({ error: "Insufficient permissions to view this progress record" })
       }
 
       res.json(progressRecord)
@@ -89,6 +112,18 @@ export class ProgressController {
   static async create(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const validatedData = createProgressSchema.parse(req.body)
+
+      // Se não for ADMIN, verificar se o aluno pertence ao instrutor
+      if (req.user!.role !== "ADMIN") {
+        const student = await prisma.student.findUnique({
+          where: { id: validatedData.studentId },
+          select: { instructorId: true }
+        })
+
+        if (!student || student.instructorId !== req.user!.id) {
+          return res.status(403).json({ error: "Insufficient permissions to create progress record for this student" })
+        }
+      }
 
       const progressRecord = await prisma.progressRecord.create({
         data: {
@@ -119,6 +154,25 @@ export class ProgressController {
     try {
       const validatedData = createProgressSchema.partial().parse(req.body)
 
+      // Verificar se o progresso existe e se o usuário tem permissão para editá-lo
+      const existingProgress = await prisma.progressRecord.findUnique({
+        where: { id: req.params.id },
+        include: {
+          student: {
+            select: { instructorId: true }
+          }
+        }
+      })
+
+      if (!existingProgress) {
+        return res.status(404).json({ error: "Progress record not found" })
+      }
+
+      // Se não for ADMIN, verificar se o progresso pertence a um aluno do instrutor
+      if (req.user!.role !== "ADMIN" && existingProgress.student.instructorId !== req.user!.id) {
+        return res.status(403).json({ error: "Insufficient permissions to edit this progress record" })
+      }
+
       const progressRecord = await prisma.progressRecord.update({
         where: { id: req.params.id },
         data: validatedData,
@@ -144,6 +198,25 @@ export class ProgressController {
 
   static async delete(req: AuthRequest, res: Response, next: NextFunction) {
     try {
+      // Verificar se o progresso existe e se o usuário tem permissão para deletá-lo
+      const existingProgress = await prisma.progressRecord.findUnique({
+        where: { id: req.params.id },
+        include: {
+          student: {
+            select: { instructorId: true }
+          }
+        }
+      })
+
+      if (!existingProgress) {
+        return res.status(404).json({ error: "Progress record not found" })
+      }
+
+      // Se não for ADMIN, verificar se o progresso pertence a um aluno do instrutor
+      if (req.user!.role !== "ADMIN" && existingProgress.student.instructorId !== req.user!.id) {
+        return res.status(403).json({ error: "Insufficient permissions to delete this progress record" })
+      }
+
       await prisma.progressRecord.delete({
         where: { id: req.params.id },
       })
