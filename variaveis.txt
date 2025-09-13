@@ -1,0 +1,4 @@
+DATABASE_URL=""
+JWT_SECRET="sua_chave_secreta_muito_segura_aqui_2024"
+PORT=8000
+
